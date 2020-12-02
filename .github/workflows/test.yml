@@ -1,0 +1,71 @@
+name: test-workflow
+on: [push]
+jobs:
+  get-username:
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.id-step1.outputs.o1 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: step1
+        id: id-step1
+        run: |
+          python3 -V
+          user_name=`python3 username.py`
+          echo "in get-username.step1"
+          echo "::set-output name=o1::$user_name"
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build Dockerfile
+        # publish master
+        uses: docker/build-push-action@v1.1.0
+        if: github.event_name == 'push'
+        with:
+          repository: test/simplelayout
+          dockerfile: ./Dockerfile
+          tags: latest
+          push: false
+        timeout-minutes: 40
+  generate-in-docker:
+    runs-on: ubuntu-latest
+    needs: [get-username, docker-build]
+    container: ${{needs.get-username.outputs.output1}}/simplelayout
+    steps:
+      - name: step2
+        id: id-step2
+        run: |
+          echo "in generate-in-docker.step2"
+          echo ${{needs.get-username.outputs.output1}}
+          simplelayout --board_grid 100 --unit_grid 10 --unit_n 3 --positions 1 15 33 --outdir dir1/dir2 --file_name example
+      - name: upload
+        uses: actions/upload-artifact@v2
+        with:
+            name: img
+            path: .
+  cml:
+    runs-on: ubuntu-latest
+    needs: [get-username, generate-in-docker]
+    container: docker://dvcorg/cml-py3:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: img
+      - name: cml_run
+        env:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -V
+          echo "Use image ${{needs.get-username.outputs.output1}}/simplelayout\n" >> report.md
+          echo "\`simplelayout --board_grid 100 --unit_grid 10 --unit_n 3 --positions 1 15 33 --outdir dir1/dir2 --file_name example\`\n" >> report.md
+          echo "dir1/dir2/example.jpg\n" >> report.md
+          ls -l
+          cat report.md
+          cml-publish dir1/dir2/example.jpg --md >> report.md
+          cml-send-comment report.md
+
