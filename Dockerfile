@@ -1,5 +1,5 @@
 # TODO: 编写本文件
-FROM deepo-ssh
+FROM ufoym/deepo:latest
 WORKDIR /usr/src/app
 COPY requirements.txt ./
 COPY . .
