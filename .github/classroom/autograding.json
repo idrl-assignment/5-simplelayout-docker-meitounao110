@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "test dockerhub repo",
+      "setup": "sudo -H pip3 install pytest requests",
+      "run": "pytest",
+      "input": "",
+      "output": "",
+      "comparison": "included",
+      "timeout": 10,
+      "points": 1
+    }
+  ]
+}
